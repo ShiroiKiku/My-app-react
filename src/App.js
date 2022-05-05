@@ -1,43 +1,46 @@
-import React, { useRef, useState } from "react"
+import axios from "axios"
+import React, { useMemo, useRef, useState, useEffect } from "react"
 import Counter from "./components/Counter"
 import PostForm from "./components/PostForm"
 import PostItem from "./components/PostItem"
 import PostList from "./components/PostList"
 import MyButton from "./components/UI/button/MyButton"
 import MyInput from "./components/UI/input/MyInput"
+import MyModal from "./components/UI/MyModal/MyModal"
+import PostFilter from "./components/UI/PostFilter"
 import MySelect from "./components/UI/select/MySelect"
+import { usePosts } from "./hooks/usePosts"
 import "./styles/App.css"
 
 function App() {
     //Массив постов
-    const [posts, setPosts] = useState([
-        { id: 1, title: "3 Третий name", body: "2 Второй desc " },
-        { id: 2, title: "1 Первый name", body: "3 Третий desc" },
-        { id: 3, title: "2 Второй name", body: "4 Четвертый desc" },
-        { id: 4, title: "4 Четвертый name", body: "1 Первый desc" },
-    ])
-    //Двустороннее связывание сортировки
-    const [selectedSort, setSelectedSort] = useState("")
-    //Двустороннее связывание поиска
-    const [searchQuery, setSearchQuery] = useState("")
+    const [posts, setPosts] = useState([])
 
-    //сортировка массива
-    function getSortedPosts() {
-        if (selectedSort) {
-            return [...posts].sort((a, b) =>
-                a[selectedSort].localeCompare(b[selectedSort])
-            )
-        }
-        return posts
-    }
-    const sortedPosts = getSortedPosts()
-    const sortPosts = (sort) => {
-        setSelectedSort(sort)
-    }
+    const [filter, setFilter] = useState({ sort: "", query: "" })
+
+    const [modal, setModal] = useState(false)
+    //Хук с сортировкой и поском
+    const sortedAndSearchedPosts = usePosts(posts, filter.sort, filter.query)
+
+    //Слежка
+    //  Выполнениен при создании
+    // return Выполнение при удалении
+    // [ ] выполнение при изменении
+    useEffect(() => {
+        fetchPosts()
+    }, [])
 
     //Создание поста
     const createPost = (newPost) => {
         setPosts([...posts, newPost])
+        setModal(false)
+    }
+
+    async function fetchPosts() {
+        const response = await axios.get(
+            "https://jsonplaceholder.typicode.com/posts"
+        )
+        setPosts(response.data)
     }
 
     //получаем post из дочернего компонента
@@ -47,42 +50,25 @@ function App() {
 
     return (
         <div className='App'>
-            <PostForm create={createPost} />
+            {/* Создание поста в модальном окне */}
+            <MyButton style={{ marginTop: 20 }} onClick={() => setModal(true)}>
+                Create a user
+            </MyButton>
+            <MyModal visible={modal} setVisible={setModal}>
+                <PostForm create={createPost} />
+            </MyModal>
 
             <hr />
-
-            {/* Поиск */}
-            <MyInput
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder='Search...'
-            />
-
-            <hr />
-
-            {/* Сортировка */}
-            <div>
-                <MySelect
-                    value={selectedSort}
-                    onChange={sortPosts}
-                    defaultValue='Sort for'
-                    options={[
-                        { value: "title", name: "For name" },
-                        { value: "body", name: "For Description" },
-                    ]}
-                />
-            </div>
+            {/* Фильтрация и поиск  */}
+            <PostFilter filter={filter} setFilter={setFilter} />
 
             {/* Проверка существования постов */}
-            {posts.length != 0 ? (
-                <PostList
-                    remove={removePost}
-                    posts={sortedPosts}
-                    title='Title List'
-                />
-            ) : (
-                <h1>No posts</h1>
-            )}
+
+            <PostList
+                remove={removePost}
+                posts={sortedAndSearchedPosts}
+                title='Title List'
+            />
         </div>
     )
 }
