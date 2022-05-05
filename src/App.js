@@ -4,13 +4,16 @@ import Counter from "./components/Counter"
 import PostForm from "./components/PostForm"
 import PostItem from "./components/PostItem"
 import PostList from "./components/PostList"
-import MyButton from "./components/UI/button/MyButton"
-import MyInput from "./components/UI/input/MyInput"
-import MyModal from "./components/UI/MyModal/MyModal"
-import PostFilter from "./components/UI/PostFilter"
-import MySelect from "./components/UI/select/MySelect"
+import MyButton from "./UI/button/MyButton"
+import MyInput from "./UI/input/MyInput"
+import MyModal from "./UI/MyModal/MyModal"
+import PostFilter from "./components/PostFilter"
+import Loader from "./UI/Loader/Loader"
+import MySelect from "./UI/select/MySelect"
 import { usePosts } from "./hooks/usePosts"
 import "./styles/App.css"
+import PostService from "./API/PostService"
+import { useFetching } from "./hooks/useFetching"
 
 function App() {
     //Массив постов
@@ -18,9 +21,21 @@ function App() {
 
     const [filter, setFilter] = useState({ sort: "", query: "" })
 
+    const [totalCount, setTotalCount] = useState(0)
+    const [limit, setLimit] = useState(10)
+    const [page, setPage] = useState(1)
+
     const [modal, setModal] = useState(false)
     //Хук с сортировкой и поском
     const sortedAndSearchedPosts = usePosts(posts, filter.sort, filter.query)
+
+    //состояние загрузки hook
+    const [fetchPosts, isPostsLoading, postError] = useFetching(async () => {
+        const response = await PostService.getAll(limit, page)
+        setPosts(response.data)
+        console.log(response.headers["x-total-count"])
+        setTotalCount(response.headers["x-total-count"])
+    })
 
     //Слежка
     //  Выполнениен при создании
@@ -34,13 +49,6 @@ function App() {
     const createPost = (newPost) => {
         setPosts([...posts, newPost])
         setModal(false)
-    }
-
-    async function fetchPosts() {
-        const response = await axios.get(
-            "https://jsonplaceholder.typicode.com/posts"
-        )
-        setPosts(response.data)
     }
 
     //получаем post из дочернего компонента
@@ -61,14 +69,27 @@ function App() {
             <hr />
             {/* Фильтрация и поиск  */}
             <PostFilter filter={filter} setFilter={setFilter} />
+            {/* Вывод ошибки */}
+            {/* РАЗОБРАТЬСЯ */}
+            {postError && <h1>Ошибка ${postError}</h1>}
 
             {/* Проверка существования постов */}
-
-            <PostList
-                remove={removePost}
-                posts={sortedAndSearchedPosts}
-                title='Title List'
-            />
+            {isPostsLoading ? (
+                <div
+                    style={{
+                        display: "flex",
+                        justifyContent: "center",
+                        marginTop: 50,
+                    }}>
+                    <Loader />
+                </div>
+            ) : (
+                <PostList
+                    remove={removePost}
+                    posts={sortedAndSearchedPosts}
+                    title='Title List'
+                />
+            )}
         </div>
     )
 }
