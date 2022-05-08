@@ -1,0 +1,8 @@
+.mySelect {
+    display: flex;
+    
+    padding: 5px;
+    margin: 10px 0 ;
+    border: 2px solid rebeccapurple;
+  }
+  
